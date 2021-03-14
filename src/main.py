@@ -1,15 +1,22 @@
 import os
+import subprocess
+
 import gi
 
 gi.require_version("Gtk", "3.0")
+
 from gi.repository import Gtk
+from gi.repository import Gdk
 
 MAX_ITEMS_LENGTH = 100
 
 
-def run_command(path, *args):
+def run_command(cmd, *args):
     Gtk.main_quit()
-    os.execl(path, *args)
+    p = subprocess.Popen(cmd)
+
+    # os.system(cmd)
+    # os.execl(path, *args)
 
 
 def get_executables():
@@ -31,11 +38,16 @@ class MyWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title=__name__)
 
+        self.set_size_request(400, 400)
+
+        self.connect("event-after", self.on_event_after)
+
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.add(self.vbox)
 
         self.entry = Gtk.Entry()
-        self.entry.connect("changed", self.on_text_input)
+        self.entry.connect("key-press-event", self.on_text_input)
+
         self.vbox.pack_start(self.entry, False, True, 0)
 
         self.hbox = Gtk.Box(spacing=6)
@@ -45,10 +57,12 @@ class MyWindow(Gtk.Window):
 
         self.item_list = Gtk.ListStore(str, str)
 
-        for executable in self.executables[0:100]:
+        for executable in self.executables[0:MAX_ITEMS_LENGTH]:
             self.item_list.append(executable)
 
         self.tree = Gtk.TreeView(model=self.item_list)
+        self.tree.connect("button-press-event", self.on_tree_click_event)
+
         self.selection = self.tree.get_selection()
         self.selection.connect("changed", self.on_selection_change)
 
@@ -58,38 +72,82 @@ class MyWindow(Gtk.Window):
         self.column = Gtk.TreeViewColumn("Path", self.renderer, text=0)
         self.tree.append_column(self.column)
 
-    def on_selection_change(self, *args, **kwargs):
-        (model, pathlist) = self.selection.get_selected_rows()
+    def on_tree_click_event(self, widget, event, *args, **kwargs):
+        print("GtkTree click event")
 
-        if len(pathlist) > 0:
-            for path in pathlist:
-                tree_iter = model.get_iter(path)
-                value = model.get_value(tree_iter, 0)
+    def on_event_after(self, widget, event, *args, **kwargs):
+        ESC_KEY = 65307
+        ENTER_KEY = 65293
+
+        if not hasattr(event, "keyval"):
+            return
+
+        if event.keyval == ESC_KEY:
+            print("ESC KEY PRESSED")
+            Gtk.main_quit()
+
+        elif event.keyval == ENTER_KEY:
+            print("ENTER KEY PRESSED")
+            (model, pathlist) = self.selection.get_selected_rows()
+
+            if len(pathlist) > 0:
+                for path in pathlist:
+                    tree_iter = model.get_iter(path)
+                    value = model.get_value(tree_iter, 0)
 
                 run_command(value, " ")
-        else:
-            user_input = self.entry.get_text()
-            (user_cmd, user_cmd_args) = user_input.split(" ")
+            else:
+                user_input = self.entry.get_text()
 
-            print(len(user_cmd_args))
+                if len(user_input) < 1:
+                    return
 
-            if len(user_cmd_args) < 1:
-                user_cmd_args = " "
+                # (user_cmd, user_cmd_args) = user_input.split(" ")
 
-            run_command(user_cmd, user_cmd_args)
+                # print(len(user_cmd_args))
 
-    def on_text_input(self, *args, **kwargs):
+                # if len(user_cmd_args) < 1:
+                    # user_cmd_args = " "
+
+                # run_command(user_cmd, user_cmd_args)
+
+                run_command(user_input)
+
+    def on_selection_change(self, *args, **kwargs):
+        print("on_selection_change")
+
+        (model, pathlist) = self.selection.get_selected_rows()
+
+        if len(pathlist) < 1:
+            return
+
+        path = pathlist[0]
+
+        tree_iter = model.get_iter(path)
+
+        value = model.get_value(tree_iter, 0)
+
+        print(f"self.entry.set_text({value})")
+        self.entry.set_text(value)
+        self.update_list = False
+
+    def on_text_input(self, widget, event, *args, **kwargs):
         user_input = self.entry.get_text()
-
-        items = [e for e in self.executables if user_input in e[0]]
-
-        if len(items) > MAX_ITEMS_LENGTH:
-            items = items[0:MAX_ITEMS_LENGTH]
+        rows_count = 0
 
         self.item_list.clear()
 
-        for item in items:
-            self.item_list.append(item)
+        if len(user_input) < 1:
+            for executable in self.executables[0:MAX_ITEMS_LENGTH]:
+                self.item_list.append(executable)
+        else:
+            for executable in self.executables:
+                if rows_count >= MAX_ITEMS_LENGTH:
+                    break
+
+                if user_input in executable[0]:
+                    self.item_list.append(executable)
+                    rows_count += 1
 
 
 if __name__ == "__main__":
