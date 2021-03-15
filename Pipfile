@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 pygobject = "*"
+fuzzywuzzy = {extras = ["speedup"], version = "*"}
 
 [dev-packages]
 

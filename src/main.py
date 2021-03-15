@@ -3,20 +3,29 @@ import logging
 import subprocess
 
 import gi
+from fuzzywuzzy import fuzz
 
 gi.require_version("Gtk", "3.0")
 
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+logging.basicConfig(encoding='utf-8', level=logging.ERROR)
+
 MAX_ITEMS_LENGTH = 100
 DEFAULT_WIDTH = 800
 DEFAULT_HEIGTH = 1000
 WINDOW_TITLE = "py-gtk3-launcher"
 
+
 def run_command(cmd, *args):
     Gtk.main_quit()
     subprocess.Popen(cmd)
+
+
+def echo_command(cmd, *args):
+    print(cmd)
+    Gtk.main_quit()
 
 
 def get_executables():
@@ -35,6 +44,7 @@ def get_executables():
         except FileNotFoundError as e:
             logging.error(f"Error: {e}")
             continue
+
 
 
 class MyWindow(Gtk.Window):
@@ -57,7 +67,7 @@ class MyWindow(Gtk.Window):
 
         self.item_list = Gtk.ListStore(str, str)
 
-        for executable in self.executables[0:MAX_ITEMS_LENGTH]:
+        for executable in self.executables:
             self.item_list.append(executable)
 
         self.tree = Gtk.TreeView(model=self.item_list)
@@ -73,6 +83,7 @@ class MyWindow(Gtk.Window):
 
         self.renderer = Gtk.CellRendererText()
         self.column = Gtk.TreeViewColumn("Path", self.renderer, text=0)
+
         self.tree.append_column(self.column)
 
     def on_tree_click_event(self, widget, event, *args, **kwargs):
@@ -126,22 +137,25 @@ class MyWindow(Gtk.Window):
         self.update_list = False
 
     def on_text_input(self, widget, event, *args, **kwargs):
+        def get_sorting_key(element):
+            return element[2]
+
         user_input = self.entry.get_text()
-        rows_count = 0
 
         self.item_list.clear()
 
         if len(user_input) < 1:
-            for executable in self.executables[0:MAX_ITEMS_LENGTH]:
+            for executable in self.executables:
                 self.item_list.append(executable)
         else:
-            for executable in self.executables:
-                if rows_count >= MAX_ITEMS_LENGTH:
-                    break
+            executables = ([executable[0], executable[1], fuzz.ratio(user_input, executable[0])]
+                           for executable in self.executables)
 
-                if user_input in executable[0]:
-                    self.item_list.append(executable)
-                    rows_count += 1
+            sorted_executables = sorted(executables,
+                                        key=get_sorting_key, reverse=True)
+
+            for executable in sorted_executables:
+                self.item_list.append([executable[0], executable[1]])
 
 
 if __name__ == "__main__":
