@@ -1,4 +1,5 @@
 import os
+import logging
 import subprocess
 
 import gi
@@ -9,14 +10,13 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 
 MAX_ITEMS_LENGTH = 100
-
+DEFAULT_WIDTH = 800
+DEFAULT_HEIGTH = 1000
+WINDOW_TITLE = "py-gtk3-launcher"
 
 def run_command(cmd, *args):
     Gtk.main_quit()
-    p = subprocess.Popen(cmd)
-
-    # os.system(cmd)
-    # os.execl(path, *args)
+    subprocess.Popen(cmd)
 
 
 def get_executables():
@@ -24,21 +24,24 @@ def get_executables():
     paths = path_env.split(":")
 
     for path in paths:
+        if not os.path.exists(path):
+            continue
+
         try:
             for dir in os.scandir(path):
                 if dir.is_file():
                     yield [f"{path}/{dir.name}", dir.name]
 
         except FileNotFoundError as e:
-            print(f"Error: {e}")
+            logging.error(f"Error: {e}")
             continue
 
 
 class MyWindow(Gtk.Window):
     def __init__(self):
-        Gtk.Window.__init__(self, title=__name__)
+        Gtk.Window.__init__(self, title=WINDOW_TITLE)
 
-        self.set_size_request(400, 400)
+        self.set_default_size(DEFAULT_WIDTH, DEFAULT_HEIGTH)
 
         self.connect("event-after", self.on_event_after)
 
@@ -50,9 +53,6 @@ class MyWindow(Gtk.Window):
 
         self.vbox.pack_start(self.entry, False, True, 0)
 
-        self.hbox = Gtk.Box(spacing=6)
-        self.vbox.pack_start(self.hbox, True, True, 0)
-
         self.executables = list(get_executables())
 
         self.item_list = Gtk.ListStore(str, str)
@@ -63,17 +63,20 @@ class MyWindow(Gtk.Window):
         self.tree = Gtk.TreeView(model=self.item_list)
         self.tree.connect("button-press-event", self.on_tree_click_event)
 
+        self.scroll = Gtk.ScrolledWindow()
+        self.scroll.add(self.tree)
+
+        self.vbox.pack_start(self.scroll, True, True, 0)
+
         self.selection = self.tree.get_selection()
         self.selection.connect("changed", self.on_selection_change)
-
-        self.hbox.pack_start(self.tree, True, True, 0)
 
         self.renderer = Gtk.CellRendererText()
         self.column = Gtk.TreeViewColumn("Path", self.renderer, text=0)
         self.tree.append_column(self.column)
 
     def on_tree_click_event(self, widget, event, *args, **kwargs):
-        print("GtkTree click event")
+        logging.debug("GtkTree click event")
 
     def on_event_after(self, widget, event, *args, **kwargs):
         ESC_KEY = 65307
@@ -83,11 +86,11 @@ class MyWindow(Gtk.Window):
             return
 
         if event.keyval == ESC_KEY:
-            print("ESC KEY PRESSED")
+            logging.debug("ESC KEY PRESSED")
             Gtk.main_quit()
 
         elif event.keyval == ENTER_KEY:
-            print("ENTER KEY PRESSED")
+            logging.debug("ENTER KEY PRESSED")
             (model, pathlist) = self.selection.get_selected_rows()
 
             if len(pathlist) > 0:
@@ -102,19 +105,10 @@ class MyWindow(Gtk.Window):
                 if len(user_input) < 1:
                     return
 
-                # (user_cmd, user_cmd_args) = user_input.split(" ")
-
-                # print(len(user_cmd_args))
-
-                # if len(user_cmd_args) < 1:
-                    # user_cmd_args = " "
-
-                # run_command(user_cmd, user_cmd_args)
-
                 run_command(user_input)
 
     def on_selection_change(self, *args, **kwargs):
-        print("on_selection_change")
+        logging.debug("on_selection_change")
 
         (model, pathlist) = self.selection.get_selected_rows()
 
@@ -127,7 +121,7 @@ class MyWindow(Gtk.Window):
 
         value = model.get_value(tree_iter, 0)
 
-        print(f"self.entry.set_text({value})")
+        logging.debug(f"self.entry.set_text({value})")
         self.entry.set_text(value)
         self.update_list = False
 
@@ -152,6 +146,7 @@ class MyWindow(Gtk.Window):
 
 if __name__ == "__main__":
     win = MyWindow()
+
     win.connect("destroy", Gtk.main_quit)
     win.show_all()
     Gtk.main()
