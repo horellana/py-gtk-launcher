@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import subprocess
 
@@ -10,12 +11,16 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-logging.basicConfig(encoding='utf-8', level=logging.ERROR)
+logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
 
 MAX_ITEMS_LENGTH = 100
 DEFAULT_WIDTH = 800
 DEFAULT_HEIGTH = 1000
 WINDOW_TITLE = "py-gtk3-launcher"
+KEYBOARD_EVENT_DELAY = 150
+
+def get_milliseconds():
+    return time.time() * 1000
 
 
 def run_command(cmd, *args):
@@ -86,6 +91,8 @@ class MyWindow(Gtk.Window):
 
         self.tree.append_column(self.column)
 
+        self.last_keyboard_event_t = None
+
     def on_tree_click_event(self, widget, event, *args, **kwargs):
         logging.debug("GtkTree click event")
 
@@ -137,6 +144,16 @@ class MyWindow(Gtk.Window):
         self.update_list = False
 
     def on_text_input(self, widget, event, *args, **kwargs):
+        if self.last_keyboard_event_t is not None:
+            dt = get_milliseconds() - self.last_keyboard_event_t
+
+            logging.debug(f"dt: {dt}")
+
+            if dt < KEYBOARD_EVENT_DELAY:
+                return
+
+        self.last_keyboard_event_t = get_milliseconds()
+
         def get_sorting_key(element):
             return element[2]
 
