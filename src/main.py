@@ -13,11 +13,17 @@ from gi.repository import Gdk
 
 logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
 
+screen = Gdk.Screen.get_default()
+screen_w = screen.get_width()
+screen_h = screen.get_height()
+
+
 MAX_ITEMS_LENGTH = 100
-DEFAULT_WIDTH = 800
-DEFAULT_HEIGTH = 1000
+DEFAULT_WIDTH = screen_w - 566
+DEFAULT_HEIGTH = screen_h - 68
 WINDOW_TITLE = "py-gtk3-launcher"
 KEYBOARD_EVENT_DELAY = 150
+
 
 def get_milliseconds():
     return time.time() * 1000
@@ -49,7 +55,6 @@ def get_executables():
         except FileNotFoundError as e:
             logging.error(f"Error: {e}")
             continue
-
 
 
 class MyWindow(Gtk.Window):
