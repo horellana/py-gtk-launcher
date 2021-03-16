@@ -23,7 +23,7 @@ MAX_ITEMS_LENGTH = 100
 DEFAULT_WIDTH = int(screen_w * 0.4)
 DEFAULT_HEIGTH = int(screen_h * 0.9)
 WINDOW_TITLE = "py-gtk3-launcher"
-KEYBOARD_EVENT_DELAY = 200
+KEYBOARD_EVENT_DELAY = 50
 
 
 def get_milliseconds():
@@ -114,6 +114,7 @@ class MyWindow(Gtk.Window):
 
         self.tree.append_column(self.column)
 
+        self.alt_pressed = False
         self.last_keyboard_event_t = None
 
     def on_tree_click_event(self, widget, event, *args, **kwargs):
@@ -122,6 +123,13 @@ class MyWindow(Gtk.Window):
     def on_event_after(self, widget, event, *args, **kwargs):
         ESC_KEY = 65307
         ENTER_KEY = 65293
+        ALT_KEY = 65513
+
+        if event.type == Gdk.EventType.KEY_RELEASE:
+            if event.keyval == ALT_KEY:
+                logging.debug("Alt key released")
+                self.alt_pressed = False
+                return
 
         if not hasattr(event, "keyval"):
             return
@@ -130,23 +138,26 @@ class MyWindow(Gtk.Window):
             logging.debug("ESC KEY PRESSED")
             Gtk.main_quit()
 
+        elif event.keyval == ALT_KEY:
+            logging.debug("Alt key pressed")
+            self.alt_pressed = True
+
         elif event.keyval == ENTER_KEY:
             logging.debug("ENTER KEY PRESSED")
-            (model, pathlist) = self.selection.get_selected_rows()
 
-            if len(pathlist) > 0:
-                for path in pathlist:
-                    tree_iter = model.get_iter(path)
-                    value = model.get_value(tree_iter, 0)
+            if self.alt_pressed:
+                command = self.entry.get_text()
 
-                run_command(value, " ")
+            elif self.selected_row is not None:
+                command = self.selected_row
+
             else:
-                user_input = self.entry.get_text()
+                command = self.entry.get_text()
 
-                if len(user_input) < 1:
-                    return
+            if len(command) < 1:
+                return
 
-                run_command(user_input)
+            run_command(command)
 
     def on_selection_change(self, *args, **kwargs):
         logging.debug("on_selection_change")
@@ -162,9 +173,7 @@ class MyWindow(Gtk.Window):
 
         value = model.get_value(tree_iter, 0)
 
-        logging.debug(f"self.entry.set_text({value})")
-        self.entry.set_text(value)
-        self.update_list = False
+        self.selected_row = value
 
     def on_text_input(self, widget, event, *args, **kwargs):
         if self.last_keyboard_event_t is not None:
@@ -172,8 +181,6 @@ class MyWindow(Gtk.Window):
 
             if dt < KEYBOARD_EVENT_DELAY:
                 return
-
-        self.last_keyboard_event_t = get_milliseconds()
 
         user_input = self.entry.get_text()
 
@@ -183,14 +190,14 @@ class MyWindow(Gtk.Window):
             for executable in self.executables:
                 self.item_list.append(executable)
         else:
-            # logging.debug(type(self.executables))
-            # logging.debug(type(user_input))
-
             items = calculate_items(self.executables, user_input)
             logging.debug(f"{len(items)} after filter")
 
             for item in items:
                 self.item_list.append([item[0], item[1]])
+
+        self.selected_row = None
+        self.last_keyboard_event_t = get_milliseconds()
 
 
 if __name__ == "__main__":
