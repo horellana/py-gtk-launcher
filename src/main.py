@@ -2,6 +2,7 @@ import os
 import time
 import logging
 import subprocess
+from functools import cache
 
 import gi
 from fuzzywuzzy import fuzz
@@ -19,14 +20,29 @@ screen_h = screen.get_height()
 
 
 MAX_ITEMS_LENGTH = 100
-DEFAULT_WIDTH = screen_w - 566
-DEFAULT_HEIGTH = screen_h - 68
+DEFAULT_WIDTH = int(screen_w * 0.4)
+DEFAULT_HEIGTH = int(screen_h * 0.9)
 WINDOW_TITLE = "py-gtk3-launcher"
-KEYBOARD_EVENT_DELAY = 150
+KEYBOARD_EVENT_DELAY = 200
 
 
 def get_milliseconds():
     return time.time() * 1000
+
+
+def calculate_items(all_items, user_filter):
+    def get_sorting_key(item):
+        return item[2]
+
+    items = ([item[0], item[1]]
+             for item in all_items if user_filter in item[0])
+
+    items = ([item[0], item[1], fuzz.ratio(user_filter, item[0])]
+             for item in items)
+
+    sorted_items = sorted(items, key=get_sorting_key, reverse=True)
+
+    return list((sorted_items))
 
 
 def run_command(cmd, *args):
@@ -73,7 +89,9 @@ class MyWindow(Gtk.Window):
 
         self.vbox.pack_start(self.entry, False, True, 0)
 
-        self.executables = list(get_executables())
+        self.executables = tuple(list(get_executables()))
+
+        logging.debug(f"Found {len(self.executables)} executables")
 
         self.item_list = Gtk.ListStore(str, str)
 
@@ -152,15 +170,10 @@ class MyWindow(Gtk.Window):
         if self.last_keyboard_event_t is not None:
             dt = get_milliseconds() - self.last_keyboard_event_t
 
-            logging.debug(f"dt: {dt}")
-
             if dt < KEYBOARD_EVENT_DELAY:
                 return
 
         self.last_keyboard_event_t = get_milliseconds()
-
-        def get_sorting_key(element):
-            return element[2]
 
         user_input = self.entry.get_text()
 
@@ -170,14 +183,14 @@ class MyWindow(Gtk.Window):
             for executable in self.executables:
                 self.item_list.append(executable)
         else:
-            executables = ([executable[0], executable[1], fuzz.ratio(user_input, executable[0])]
-                           for executable in self.executables)
+            # logging.debug(type(self.executables))
+            # logging.debug(type(user_input))
 
-            sorted_executables = sorted(executables,
-                                        key=get_sorting_key, reverse=True)
+            items = calculate_items(self.executables, user_input)
+            logging.debug(f"{len(items)} after filter")
 
-            for executable in sorted_executables:
-                self.item_list.append([executable[0], executable[1]])
+            for item in items:
+                self.item_list.append([item[0], item[1]])
 
 
 if __name__ == "__main__":
