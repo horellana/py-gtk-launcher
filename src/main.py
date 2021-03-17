@@ -12,7 +12,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(encoding='utf-8', level=logging.ERROR)
 
 screen = Gdk.Screen.get_default()
 screen_w = screen.get_width()
@@ -23,7 +23,6 @@ MAX_ITEMS_LENGTH = 100
 DEFAULT_WIDTH = int(screen_w * 0.4)
 DEFAULT_HEIGTH = int(screen_h * 0.9)
 WINDOW_TITLE = "py-gtk3-launcher"
-KEYBOARD_EVENT_DELAY = 50
 
 
 def get_milliseconds():
@@ -176,12 +175,6 @@ class MyWindow(Gtk.Window):
         self.selected_row = value
 
     def on_text_input(self, widget, event, *args, **kwargs):
-        if self.last_keyboard_event_t is not None:
-            dt = get_milliseconds() - self.last_keyboard_event_t
-
-            if dt < KEYBOARD_EVENT_DELAY:
-                return
-
         user_input = self.entry.get_text()
 
         self.item_list.clear()
@@ -195,10 +188,9 @@ class MyWindow(Gtk.Window):
 
             for item in items:
                 self.item_list.append([item[0], item[1]])
-
+        
         self.selected_row = None
-        self.last_keyboard_event_t = get_milliseconds()
-
+        self.tree.set_cursor(0)
 
 if __name__ == "__main__":
     win = MyWindow()
