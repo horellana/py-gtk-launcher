@@ -1,6 +1,7 @@
 import os
 import queue
 import logging
+import functools
 import threading
 
 from inotify_simple import INotify, flags
@@ -12,7 +13,9 @@ CACHE_PATH = f"{os.environ['HOME']}/.cache/pygtkl"
 q = queue.Queue()
 
 
+@functools.cache
 def get_cache():
+    logging.debug("get_cache()")
     path_env = os.environ.get("PATH")
     paths = path_env.split(":")
 
@@ -33,10 +36,8 @@ def get_cache():
     return result
 
 
-cache = get_cache()
-
-
 def handle_inotify_actions():
+    cache = get_cache()
     while True:
         try:
             item = q.get()
@@ -72,6 +73,8 @@ def handle_inotify_actions():
 
 
 def init_cache():
+    cache = get_cache()
+
     with open(CACHE_PATH, "w") as fh:
         for path in cache:
             print(path, file=fh)
