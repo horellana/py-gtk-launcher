@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import logging
 import subprocess
@@ -20,7 +21,7 @@ screen_h = screen.get_height()
 
 
 MAX_ITEMS_LENGTH = 100
-DEFAULT_WIDTH = int(screen_w * 0.4)
+DEFAULT_WIDTH = int(screen_w * 0.3)
 DEFAULT_HEIGTH = int(screen_h * 0.9)
 WINDOW_TITLE = "py-gtk3-launcher"
 
@@ -29,15 +30,19 @@ def get_milliseconds():
     return time.time() * 1000
 
 
-def calculate_items(all_items, user_filter):
+def calculate_items(all_items, user_filter, case_insensitive=False):
     def get_sorting_key(item):
-        return item[2]
+        return item[1]
 
-    items = ([item[0], item[1]]
+    items = ([item[0]]
              for item in all_items if user_filter in item[0])
 
-    items = ([item[0], item[1], fuzz.ratio(user_filter, item[0])]
-             for item in items)
+    if case_insensitive:
+        items = ([item[0], fuzz.ratio(user_filter.lower(), item[0].lower())]
+                 for item in items)
+    else:
+        items = ([item[0], fuzz.ratio(user_filter, item[0])]
+                 for item in items)
 
     sorted_items = sorted(items, key=get_sorting_key, reverse=True)
 
@@ -65,7 +70,7 @@ def get_executables():
         try:
             for dir in os.scandir(path):
                 if dir.is_file():
-                    yield [f"{path}/{dir.name}", dir.name]
+                    yield [f"{path}/{dir.name}"]
 
         except FileNotFoundError as e:
             logging.error(f"Error: {e}")
@@ -73,7 +78,7 @@ def get_executables():
 
 
 class MyWindow(Gtk.Window):
-    def __init__(self):
+    def __init__(self, items=tuple(list(get_executables()))):
         Gtk.Window.__init__(self, title=WINDOW_TITLE)
 
         self.set_default_size(DEFAULT_WIDTH, DEFAULT_HEIGTH)
@@ -88,11 +93,11 @@ class MyWindow(Gtk.Window):
 
         self.vbox.pack_start(self.entry, False, True, 0)
 
-        self.executables = tuple(list(get_executables()))
+        self.executables = items
 
         logging.debug(f"Found {len(self.executables)} executables")
 
-        self.item_list = Gtk.ListStore(str, str)
+        self.item_list = Gtk.ListStore(str)
 
         for executable in self.executables:
             self.item_list.append(executable)
@@ -156,7 +161,8 @@ class MyWindow(Gtk.Window):
             if len(command) < 1:
                 return
 
-            run_command(command)
+            echo_command(command)
+            # run_command(command)
 
     def on_selection_change(self, *args, **kwargs):
         logging.debug("on_selection_change")
@@ -187,14 +193,20 @@ class MyWindow(Gtk.Window):
             logging.debug(f"{len(items)} after filter")
 
             for item in items:
-                self.item_list.append([item[0], item[1]])
-        
+                self.item_list.append([item[0]])
+
         self.selected_row = None
         self.tree.set_cursor(0)
 
-if __name__ == "__main__":
-    win = MyWindow()
 
+def main():
+    items = [(line.rstrip("\n"), )  for line in sys.stdin.readlines()]
+
+    win = MyWindow(items=items)
     win.connect("destroy", Gtk.main_quit)
     win.show_all()
     Gtk.main()
+
+
+if __name__ == "__main__":
+    main()
