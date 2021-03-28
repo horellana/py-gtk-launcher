@@ -46,7 +46,7 @@ def calculate_items(all_items, user_filter, case_insensitive=False):
 
     sorted_items = sorted(items, key=get_sorting_key, reverse=True)
 
-    return list((sorted_items))
+    return list((sorted_items))[0:100]
 
 
 def run_command(cmd, *args):
@@ -200,7 +200,7 @@ class MyWindow(Gtk.Window):
 
 
 def main():
-    items = [(line.rstrip("\n"), )  for line in sys.stdin.readlines()]
+    items = [(line.rstrip("\n"), ) for line in sys.stdin.readlines()]
 
     win = MyWindow(items=items)
     win.connect("destroy", Gtk.main_quit)
