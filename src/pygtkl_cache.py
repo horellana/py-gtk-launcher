@@ -52,6 +52,7 @@ def handle_inotify_actions():
                 cache.remove(path)
 
             elif action == "flags.CREATE":
+                logging.info(f"Adding {path} to cache")
                 cache.add(path)
 
             else:
@@ -104,9 +105,13 @@ def watch_directory(directory):
 def main():
     init_cache()
 
+    workers = list()
+
     for directory in get_watched_directories():
         t = threading.Thread(target=watch_directory, args=(directory,))
         t.start()
+
+        workers.append(t)
 
     handle_inotify_actions()
 
