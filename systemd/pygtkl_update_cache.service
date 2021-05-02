@@ -1,13 +1,13 @@
 [Unit]
-PartOf=graphical-session.target
-After=graphical-session.target
+Description=Daemon to upcate pygtkl cache
 
 [Service]
 Type=simple
 WorkingDirectory=/home/hector/personal/proyectos/py-gtk3-launcher
 Restart=always
+RestartSec=5
 ExecStart=pipenv run python src/pygtkl_cache.py
 ExecReload=/bin/kill -9 $MAINPID
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target

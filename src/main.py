@@ -46,7 +46,7 @@ def calculate_items(all_items, user_filter, case_insensitive=False):
 
     sorted_items = sorted(items, key=get_sorting_key, reverse=True)
 
-    return list((sorted_items))[0:100]
+    return list((sorted_items))[0:50]
 
 
 def run_command(cmd, *args):
@@ -99,7 +99,7 @@ class MyWindow(Gtk.Window):
 
         self.item_list = Gtk.ListStore(str)
 
-        for executable in self.executables:
+        for executable in self.executables[0:50]:
             self.item_list.append(executable)
 
         self.tree = Gtk.TreeView(model=self.item_list)
@@ -162,7 +162,6 @@ class MyWindow(Gtk.Window):
                 return
 
             echo_command(command)
-            # run_command(command)
 
     def on_selection_change(self, *args, **kwargs):
         logging.debug("on_selection_change")
