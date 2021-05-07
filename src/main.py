@@ -78,7 +78,7 @@ def get_executables():
 
 
 class MyWindow(Gtk.Window):
-    def __init__(self, items=tuple(list(get_executables()))):
+    def __init__(self, items):
         Gtk.Window.__init__(self, title=WINDOW_TITLE)
 
         self.set_default_size(DEFAULT_WIDTH, DEFAULT_HEIGTH)
