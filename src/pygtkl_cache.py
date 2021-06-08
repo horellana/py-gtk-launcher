@@ -28,7 +28,9 @@ def get_cache():
         try:
             for dir in os.scandir(path):
                 if dir.is_file():
-                    result.add(f"{path}/{dir.name}")
+                    if "~" not in dir.name:
+                        result.add(f"{path}/{dir.name}")
+
         except FileNotFoundError as e:
             logging.error(f"{e}")
             continue
