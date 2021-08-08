@@ -25,6 +25,17 @@ DEFAULT_WIDTH = int(screen_w * 0.3)
 DEFAULT_HEIGTH = int(screen_h * 0.9)
 WINDOW_TITLE = "py-gtk3-launcher"
 
+LOCK_PATH = "/tmp/pygtklauncher.lock"
+
+
+def is_running_already():
+    return os.path.isfile(LOCK_PATH)
+
+
+def create_lock_file():
+    with open(LOCK_PATH, "w"):
+        return
+
 
 def get_milliseconds():
     return time.time() * 1000
@@ -199,13 +210,33 @@ class MyWindow(Gtk.Window):
 
 
 def main():
-    items = [(line.rstrip("\n"), ) for line in sys.stdin.readlines()]
+    if is_running_already():
+        print("Running already, bye", file=sys.stderr)
+        print("")
+        sys.exit(1)
 
-    win = MyWindow(items=items)
-    win.connect("destroy", Gtk.main_quit)
-    win.show_all()
-    Gtk.main()
+    try:
+        create_lock_file()
+
+        items = [(line.rstrip("\n"), ) for line in sys.stdin.readlines()]
+
+        win = MyWindow(items=items)
+        win.connect("destroy", Gtk.main_quit)
+        win.show_all()
+        Gtk.main()
+
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+
+    finally:
+        print(f"Removing lock file: {LOCK_PATH}")
+        os.remove(LOCK_PATH)
 
 
 if __name__ == "__main__":
+    # print(f"W: {screen_w}")
+    # print(f"H: {screen_h}")
+    # print(DEFAULT_WIDTH)
+    # print(DEFAULT_HEIGTH)
+
     main()
