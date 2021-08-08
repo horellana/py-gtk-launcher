@@ -1,5 +1,5 @@
 build:
-	cp src/* build/
+	cp pygtkl/* build/
 	pip install --target ./build/vendor -r requirements.txt
 
 install:

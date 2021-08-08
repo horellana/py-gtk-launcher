@@ -2,8 +2,8 @@ import os
 import sys
 import time
 import logging
+import argparse
 import subprocess
-from functools import cache
 
 import gi
 from fuzzywuzzy import fuzz
@@ -12,6 +12,7 @@ gi.require_version("Gtk", "3.0")
 
 from gi.repository import Gtk
 from gi.repository import Gdk
+
 
 logging.basicConfig(encoding='utf-8', level=logging.ERROR)
 
@@ -25,6 +26,7 @@ DEFAULT_WIDTH = int(screen_w * 0.3)
 DEFAULT_HEIGTH = int(screen_h * 0.9)
 WINDOW_TITLE = "py-gtk3-launcher"
 
+UI_FILE_PATH = "ui.glade"
 LOCK_PATH = "/tmp/pygtklauncher.lock"
 
 
@@ -88,49 +90,69 @@ def get_executables():
             continue
 
 
-class MyWindow(Gtk.Window):
-    def __init__(self, items):
-        Gtk.Window.__init__(self, title=WINDOW_TITLE)
-
-        self.set_default_size(DEFAULT_WIDTH, DEFAULT_HEIGTH)
-
-        self.connect("event-after", self.on_event_after)
-
-        self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.add(self.vbox)
-
-        self.entry = Gtk.Entry()
-        self.entry.connect("key-press-event", self.on_text_input)
-
-        self.vbox.pack_start(self.entry, False, True, 0)
+class App:
+    def __init__(self, items, ui_path=UI_FILE_PATH):
+        self.items = items
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file(ui_path)
 
         self.executables = items
 
-        logging.debug(f"Found {len(self.executables)} executables")
-
-        self.item_list = Gtk.ListStore(str)
-
-        for executable in self.executables[0:50]:
-            self.item_list.append(executable)
-
-        self.tree = Gtk.TreeView(model=self.item_list)
-        self.tree.connect("button-press-event", self.on_tree_click_event)
-
-        self.scroll = Gtk.ScrolledWindow()
-        self.scroll.add(self.tree)
-
-        self.vbox.pack_start(self.scroll, True, True, 0)
-
+        self.window = self.builder.get_object("window")
+        self.item_list = self.builder.get_object("list_store")
+        self.entry = self.builder.get_object("search_input")
+        self.tree = self.builder.get_object("tree_view")
         self.selection = self.tree.get_selection()
+
+        self.tree.set_model = self.item_list
+        self.tree.append_column(Gtk.TreeViewColumn("Path", Gtk.CellRendererText(), text=0))
+
+        self.window.connect("destroy", Gtk.main_quit)
+        self.window.connect("event-after", self.on_event_after)
+        self.entry.connect("key-press-event", self.on_text_input)
+        self.tree.connect("button-press-event", self.on_tree_click_event)
         self.selection.connect("changed", self.on_selection_change)
-
-        self.renderer = Gtk.CellRendererText()
-        self.column = Gtk.TreeViewColumn("Path", self.renderer, text=0)
-
-        self.tree.append_column(self.column)
 
         self.alt_pressed = False
         self.last_keyboard_event_t = None
+
+    def show(self):
+        self.window.show_all()
+        Gtk.main()
+
+    def on_text_input(self, widget, event, *args, **kwargs):
+        user_input = self.entry.get_text()
+
+        self.item_list.clear()
+
+        if len(user_input) < 1:
+            for executable in self.executables:
+                self.item_list.append(executable)
+        else:
+            items = calculate_items(self.executables, user_input)
+            logging.debug(f"{len(items)} after filter")
+
+            for item in items:
+                self.item_list.append([item[0]])
+
+        self.selected_row = None
+        self.tree.set_cursor(0)
+
+    def on_selection_change(self, *args, **kwargs):
+        logging.debug("on_selection_change")
+
+        (model, pathlist) = self.selection.get_selected_rows()
+
+        if len(pathlist) < 1:
+            return
+
+        path = pathlist[0]
+
+        tree_iter = model.get_iter(path)
+
+        value = model.get_value(tree_iter, 0)
+
+        self.selected_row = value
 
     def on_tree_click_event(self, widget, event, *args, **kwargs):
         logging.debug("GtkTree click event")
@@ -174,69 +196,37 @@ class MyWindow(Gtk.Window):
 
             echo_command(command)
 
-    def on_selection_change(self, *args, **kwargs):
-        logging.debug("on_selection_change")
-
-        (model, pathlist) = self.selection.get_selected_rows()
-
-        if len(pathlist) < 1:
-            return
-
-        path = pathlist[0]
-
-        tree_iter = model.get_iter(path)
-
-        value = model.get_value(tree_iter, 0)
-
-        self.selected_row = value
-
-    def on_text_input(self, widget, event, *args, **kwargs):
-        user_input = self.entry.get_text()
-
-        self.item_list.clear()
-
-        if len(user_input) < 1:
-            for executable in self.executables:
-                self.item_list.append(executable)
-        else:
-            items = calculate_items(self.executables, user_input)
-            logging.debug(f"{len(items)} after filter")
-
-            for item in items:
-                self.item_list.append([item[0]])
-
-        self.selected_row = None
-        self.tree.set_cursor(0)
-
 
 def main():
     if is_running_already():
         print("Running already, bye", file=sys.stderr)
-        print("")
+        print("", file=sys.stderr)
+        Gtk.main_quit()
         sys.exit(1)
+
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument("--ui", default=UI_FILE_PATH)
+
+    args = parser.parse_args()
+
+    print(f"ARGS: {args.ui}", file=sys.stderr)
 
     try:
         create_lock_file()
 
         items = [(line.rstrip("\n"), ) for line in sys.stdin.readlines()]
 
-        win = MyWindow(items=items)
-        win.connect("destroy", Gtk.main_quit)
-        win.show_all()
-        Gtk.main()
-
+        app = App(items=items, ui_path=args.ui)
+        app.show()
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
 
     finally:
-        print(f"Removing lock file: {LOCK_PATH}")
+        print(f"Removing lock file: {LOCK_PATH}", file=sys.stderr)
         os.remove(LOCK_PATH)
+        Gtk.main_quit()
+        sys.exit(0)
 
 
 if __name__ == "__main__":
-    # print(f"W: {screen_w}")
-    # print(f"H: {screen_h}")
-    # print(DEFAULT_WIDTH)
-    # print(DEFAULT_HEIGTH)
-
     main()
