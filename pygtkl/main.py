@@ -59,7 +59,7 @@ def calculate_items(all_items, user_filter, case_insensitive=False):
 
     sorted_items = sorted(items, key=get_sorting_key, reverse=True)
 
-    return list((sorted_items))[0:50]
+    return list((sorted_items))
 
 
 def run_command(cmd, *args):
@@ -115,6 +115,9 @@ class App:
 
         self.alt_pressed = False
         self.last_keyboard_event_t = None
+
+        for executable in self.executables:
+            self.item_list.append(executable)
 
     def show(self):
         self.window.show_all()

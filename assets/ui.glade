@@ -37,6 +37,8 @@
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="shadow-type">in</property>
+            <property name="propagate-natural-width">True</property>
+            <property name="propagate-natural-height">True</property>
             <child>
               <object class="GtkTreeView" id="tree_view">
                 <property name="visible">True</property>
@@ -44,7 +46,6 @@
                 <property name="model">list_store</property>
                 <property name="search-column">1</property>
                 <property name="enable-grid-lines">horizontal</property>
-                <property name="enable-tree-lines">True</property>
                 <child internal-child="selection">
                   <object class="GtkTreeSelection"/>
                 </child>
