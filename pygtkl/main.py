@@ -119,6 +119,11 @@ class App:
         for executable in self.executables:
             self.item_list.append(executable)
 
+        self.window.set_keep_above(True)
+
+        screen = self.window.get_screen()
+        self.window.resize(screen.get_width() * 0.3, screen.get_height() * 0.9)
+
     def show(self):
         self.window.show_all()
         Gtk.main()
