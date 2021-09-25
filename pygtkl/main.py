@@ -57,7 +57,7 @@ def calculate_items(all_items, user_filter, case_insensitive=False):
         items = ([item[0], fuzz.ratio(user_filter, item[0])]
                  for item in items)
 
-    sorted_items = sorted(items, key=get_sorting_key, reverse=True)
+    sorted_items = sorted(items, key=get_sorting_key, reverse=True)[0:50]
 
     return list((sorted_items))
 
@@ -125,8 +125,17 @@ class App:
 
         self.window.set_keep_above(True)
 
+        start = time.time()
         screen = self.window.get_screen()
+        end = time.time()
+
+        print(f"It took {end - start} seconds to get all availabe screens")
+
+        start = time.time()
         self.window.resize(screen.get_width() * 0.3, screen.get_height() * 0.9)
+        end = time.time()
+
+        print(f"It took {end - start} seconds to resize app window")
 
     def show(self):
         start = time.time()
@@ -144,7 +153,7 @@ class App:
         self.item_list.clear()
 
         if len(user_input) < 1:
-            for executable in self.executables:
+            for executable in self.executables[0:50]:
                 self.item_list.append(executable)
         else:
             items = calculate_items(self.executables, user_input)
