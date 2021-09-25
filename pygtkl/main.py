@@ -116,8 +116,12 @@ class App:
         self.alt_pressed = False
         self.last_keyboard_event_t = None
 
-        for executable in self.executables:
+        start = time.time()
+        for executable in self.executables[0:50]:
             self.item_list.append(executable)
+        end = time.time()
+
+        print(f"It took {end - start} seconds to append executables to gtk item list")
 
         self.window.set_keep_above(True)
 
@@ -125,8 +129,14 @@ class App:
         self.window.resize(screen.get_width() * 0.3, screen.get_height() * 0.9)
 
     def show(self):
+        start = time.time()
         self.window.show_all()
+        end = time.time()
+
+        print(f"It took {end - start} seconds to show gtk window")
+
         Gtk.main()
+        
 
     def on_text_input(self, widget, event, *args, **kwargs):
         user_input = self.entry.get_text()
@@ -220,11 +230,24 @@ def main():
     print(f"ARGS: {args.ui}", file=sys.stderr)
 
     try:
+        start = time.time()
         create_lock_file()
+        end = time.time()
 
+        print(f"It took {end - start} seconds to create look file")
+
+        start = time.time()
         items = [(line.rstrip("\n"), ) for line in sys.stdin.readlines()]
+        end = time.time()
 
+        print(f"It took {end - start} seconds to read input from stdin")
+
+        start = time.time()
         app = App(items=items, ui_path=args.ui)
+        end = time.time()
+
+        print(f"It took {end - start} seconds to instantiate App class")
+
         app.show()
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
