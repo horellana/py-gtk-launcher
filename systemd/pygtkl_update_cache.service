@@ -6,7 +6,7 @@ Type=simple
 WorkingDirectory=/home/hector/personal/proyectos/py-gtk3-launcher
 Restart=always
 RestartSec=5
-ExecStart=pipenv run python src/pygtkl_cache.py
+ExecStart=pipenv run python pygtkl/pygtkl_cache.py
 ExecReload=/bin/kill -9 $MAINPID
 
 [Install]
