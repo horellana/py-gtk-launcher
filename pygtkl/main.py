@@ -1,6 +1,10 @@
+import time
+
+start = time.time()
+
 import os
 import sys
-import time
+
 import logging
 import argparse
 import subprocess
@@ -14,7 +18,11 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 
 
-logging.basicConfig(encoding='utf-8', level=logging.ERROR)
+end = time.time()
+
+logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
+
+logging.debug(f"It took {end - start} seconds to import modules")
 
 screen = Gdk.Screen.get_default()
 screen_w = screen.get_width()
@@ -28,6 +36,11 @@ WINDOW_TITLE = "py-gtk3-launcher"
 
 UI_FILE_PATH = "ui.glade"
 LOCK_PATH = "/tmp/pygtklauncher.lock"
+
+
+def take(it, l):
+    for _ in range(l):
+        yield next(it)
 
 
 def is_running_already():
@@ -57,9 +70,9 @@ def calculate_items(all_items, user_filter, case_insensitive=False):
         items = ([item[0], fuzz.ratio(user_filter, item[0])]
                  for item in items)
 
-    sorted_items = sorted(items, key=get_sorting_key, reverse=True)[0:50]
+    sorted_items = sorted(items, key=get_sorting_key, reverse=True)
 
-    return list((sorted_items))
+    return sorted_items[0:50]
 
 
 def run_command(cmd, *args):
@@ -121,7 +134,7 @@ class App:
             self.item_list.append(executable)
         end = time.time()
 
-        print(f"It took {end - start} seconds to append executables to gtk item list")
+        logging.debug(f"It took {end - start} seconds to append executables to gtk item list")
 
         self.window.set_keep_above(True)
 
@@ -129,20 +142,20 @@ class App:
         screen = self.window.get_screen()
         end = time.time()
 
-        print(f"It took {end - start} seconds to get all availabe screens")
+        logging.debug(f"It took {end - start} seconds to get all availabe screens")
 
         start = time.time()
         self.window.resize(screen.get_width() * 0.3, screen.get_height() * 0.9)
         end = time.time()
 
-        print(f"It took {end - start} seconds to resize app window")
+        logging.debug(f"It took {end - start} seconds to resize app window")
 
     def show(self):
         start = time.time()
         self.window.show_all()
         end = time.time()
 
-        print(f"It took {end - start} seconds to show gtk window")
+        logging.debug(f"It took {end - start} seconds to show gtk window")
 
         Gtk.main()
         
@@ -157,7 +170,6 @@ class App:
                 self.item_list.append(executable)
         else:
             items = calculate_items(self.executables, user_input)
-            logging.debug(f"{len(items)} after filter")
 
             for item in items:
                 self.item_list.append([item[0]])
@@ -166,8 +178,6 @@ class App:
         self.tree.set_cursor(0)
 
     def on_selection_change(self, *args, **kwargs):
-        logging.debug("on_selection_change")
-
         (model, pathlist) = self.selection.get_selected_rows()
 
         if len(pathlist) < 1:
@@ -199,15 +209,12 @@ class App:
             return
 
         if event.keyval == ESC_KEY:
-            logging.debug("ESC KEY PRESSED")
             Gtk.main_quit()
 
         elif event.keyval == ALT_KEY:
-            logging.debug("Alt key pressed")
             self.alt_pressed = True
 
         elif event.keyval == ENTER_KEY:
-            logging.debug("ENTER KEY PRESSED")
 
             if self.alt_pressed:
                 command = self.entry.get_text()
@@ -226,8 +233,7 @@ class App:
 
 def main():
     if is_running_already():
-        print("Running already, bye", file=sys.stderr)
-        print("", file=sys.stderr)
+        logging.error("Running already, bye")
         Gtk.main_quit()
         sys.exit(1)
 
@@ -236,33 +242,33 @@ def main():
 
     args = parser.parse_args()
 
-    print(f"ARGS: {args.ui}", file=sys.stderr)
+    logging.error(f"ARGS: {args.ui}")
 
     try:
         start = time.time()
         create_lock_file()
         end = time.time()
 
-        print(f"It took {end - start} seconds to create look file")
+        logging.debug(f"It took {end - start} seconds to create look file")
 
         start = time.time()
         items = [(line.rstrip("\n"), ) for line in sys.stdin.readlines()]
         end = time.time()
 
-        print(f"It took {end - start} seconds to read input from stdin")
+        logging.debug(f"It took {end - start} seconds to read input from stdin")
 
         start = time.time()
         app = App(items=items, ui_path=args.ui)
         end = time.time()
 
-        print(f"It took {end - start} seconds to instantiate App class")
+        logging.debug(f"It took {end - start} seconds to instantiate App class")
 
         app.show()
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logging.error(f"Error: {e}")
 
     finally:
-        print(f"Removing lock file: {LOCK_PATH}", file=sys.stderr)
+        logging.error(f"Removing lock file: {LOCK_PATH}")
         os.remove(LOCK_PATH)
         Gtk.main_quit()
         sys.exit(0)
